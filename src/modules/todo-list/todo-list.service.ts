@@ -1,68 +1,57 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
 
 import { CreateTodoListDto } from './dto/create-todo-list.dto';
 import { UpdateTodoListDto } from './dto/update-todo-list.dto';
-import { ITodo } from './interfaces/todo.interface';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TodoListService {
-  private _todoList: ITodo[] = [];
+  constructor(private prisma: PrismaService) {}
 
-  create(createTodoListDto: CreateTodoListDto) {
+  async create(createTodoListDto: CreateTodoListDto) {
     try {
-      const newTodoList = {
-        ...createTodoListDto,
-        id: uuidv4(),
-      };
+      const newTodo = await this.prisma.todo.create({
+        data: createTodoListDto,
+      });
 
-      this._todoList.push(newTodoList);
-
-      return newTodoList;
+      return newTodo;
     } catch (error) {
-      throw new HttpException('Forbidden', HttpStatus.FORBIDDEN);
+      throw new HttpException('Bad request', HttpStatus.BAD_REQUEST);
     }
   }
 
-  findAll() {
-    return this._todoList;
-  }
-
-  findOne(id: string) {
-    const todo = this._todoList.find((item) => item.id === id);
-
-    if (todo) {
-      return todo;
-    } else {
-      throw new HttpException('Todo is not found', HttpStatus.NOT_FOUND);
+  async findAll() {
+    try {
+      return await this.prisma.todo.findMany();
+    } catch (error) {
+      throw new HttpException('Bad request', HttpStatus.BAD_REQUEST);
     }
   }
 
-  update(id: string, updateTodoListDto: UpdateTodoListDto) {
-    const findIndexTodo = this._todoList.findIndex((todo) => todo.id === id);
-
-    if (findIndexTodo !== -1) {
-      this._todoList[findIndexTodo] = {
-        id,
-        name: updateTodoListDto.name,
-        status: updateTodoListDto.status,
-      };
-
-      console.log('todo list', this._todoList);
-    } else {
-      throw new HttpException('Todo is not found', HttpStatus.NOT_FOUND);
+  async findOne(id: string) {
+    try {
+      return await this.prisma.todo.findUniqueOrThrow({ where: { id } });
+    } catch (error) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND);
     }
   }
 
-  remove(id: string) {
-    const findIndexTodo = this._todoList.findIndex((todo) => todo.id === id);
+  async update(id: string, updateTodoListDto: UpdateTodoListDto) {
+    try {
+      return await this.prisma.todo.update({
+        where: { id },
+        data: updateTodoListDto,
+      });
+    } catch (error) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND);
+    }
+  }
 
-    if (findIndexTodo !== -1) {
-      this._todoList = this._todoList.filter((todo) => todo.id !== id);
-
-      console.log('todo list', this._todoList);
-    } else {
-      throw new HttpException('Todo is not found', HttpStatus.NOT_FOUND);
+  async remove(id: string) {
+    try {
+      return await this.prisma.todo.delete({ where: { id } });
+    } catch (error) {
+      throw new HttpException('Not found', HttpStatus.NOT_FOUND);
     }
   }
 }
